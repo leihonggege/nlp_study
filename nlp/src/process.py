@@ -3,7 +3,7 @@ import time
 import torch
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
-from tqdm import tqdm
+from tqdm import tqdm  #进度条工具
 
 from dataset import get_dataloader
 from model import InputMethodModel
