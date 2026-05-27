@@ -16,7 +16,7 @@ pythonenv*
 
 # PyCharm
 .idea/
-
+.logs/
 # VS Code
 .vscode/
 
