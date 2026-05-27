@@ -1,0 +1,114 @@
+from abc import abstractmethod
+from nltk import word_tokenize, TreebankWordDetokenizer
+from tqdm import tqdm
+
+class BaseTokenizer:
+  """
+  分词器基类，支持词表构建、编码、索引映射等功能。
+  """
+  unk_token = '<unk>'
+  pad_token = '<pad>'
+  sos_token = '<sos>'
+  eos_token = '<eos>'
+
+  @staticmethod
+  @abstractmethod
+  def tokenize(sentence):
+    """
+    分词抽象方法。
+    """
+    pass
+
+  @abstractmethod
+  def decode(self, indexes):
+    """
+    解码抽象方法。
+    """
+    pass
+
+  @classmethod
+  def build_vocab(cls, sentences, vocab_file):
+    """
+    构建并保存词表。
+
+    :param sentences: 句子列表。
+    :param vocab_file: 词表文件路径。
+    """
+    unique_words = set()
+    for sentence in tqdm(sentences, desc='分词'):
+      # 收集唯一词汇
+      for word in cls.tokenize(sentence):
+        unique_words.add(word)
+
+    vocab_list = [cls.pad_token, cls.unk_token, cls.sos_token, cls.eos_token] + list(unique_words)
+
+    with open(vocab_file, 'w', encoding='utf-8') as f:
+      for word in vocab_list:
+        f.write(word + '\n')
+
+  def __init__(self, vocab_list):
+    """
+    初始化分词器。
+
+    :param vocab_list: 词表列表。
+    """
+    self.vocab_list = vocab_list
+    self.vocab_size = len(vocab_list)
+    self.word2index = {word: index for index, word in enumerate(vocab_list)}
+    self.index2word = {index: word for index, word in enumerate(vocab_list)}
+    self.unk_token_index = self.word2index[self.unk_token]
+    self.pad_token_index = self.word2index[self.pad_token]
+    self.sos_token_index = self.word2index[self.sos_token]
+    self.eos_token_index = self.word2index[self.eos_token]
+
+  @classmethod
+  def from_vocab(cls, vocab_file):
+    """
+    加载词表并创建分词器。
+
+    :param vocab_file: 词表文件路径。
+    :return: 分词器对象。
+    """
+    with open(vocab_file, 'r', encoding='utf-8') as f:
+      vocab_list = [line.strip() for line in f.readlines()]
+    return cls(vocab_list)
+
+  def encode(self, sentence, seq_len, add_sos_eos=False):
+    """
+    编码句子为索引。
+
+    :param sentence: 输入句子。
+    :param seq_len: 序列长度。
+    :param add_sos_eos: 是否加起始结束符。
+    :return: 索引列表。
+    """
+    tokens = self.tokenize(sentence)
+    indexes = [self.word2index.get(token, self.unk_token_index) for token in tokens]
+
+    if add_sos_eos:
+      indexes = indexes[:seq_len - 2]
+      indexes = [self.sos_token_index] + indexes + [self.eos_token_index]
+    else:
+      indexes = indexes[:seq_len]
+
+    if len(indexes) < seq_len:
+      indexes += [self.pad_token_index] * (seq_len - len(indexes))
+
+    return indexes
+
+class ChineseTokenizer(BaseTokenizer):
+  @staticmethod
+  def tokenize(sentence):
+    return list(sentence)
+
+  def decode(self, indexes):
+    return "".join([self.index2word[index] for index in indexes])
+
+class EnglishTokenizer(BaseTokenizer):
+  @staticmethod
+  def tokenize(sentence):
+    return word_tokenize(sentence)
+
+  def decode(self, indexes):
+    tokens = [self.index2word[index] for index in indexes]
+    return TreebankWordDetokenizer().detokenize(tokens)
