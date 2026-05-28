@@ -49,3 +49,19 @@ class TranslationModel(nn.Module):
         src_embed = self.position_encoding(src_embed)
         memory = self.transformer.encoder(src=src_embed, src_key_padding_mask=src_pad_mask)
         return memory
+
+
+    def decode (self,tgt,memory,tgt_mask,tgt_pad_mask,src_pad_mask):
+        tgt_embed = self.tgt_embedding(tgt)
+        tgt_embed = self.position_encoding(tgt_embed)
+
+        output = self.transformer.decoder(tgt=tgt_embed, memory=memory, tgt_mask= tgt_mask,
+                             tgt_key_padding_mask = tgt_pad_mask,
+                             memory_key_padding_mask = src_pad_mask)
+        return self.linear(output)
+
+    def forward(self, src, tgt, src_pad_mask, tgt_pad_mask, tgt_mask):
+            memory = self.encode(src, src_pad_mask)
+
+            output = self.decode(tgt, memory, tgt_mask, tgt_pad_mask, src_pad_mask)
+            return output
